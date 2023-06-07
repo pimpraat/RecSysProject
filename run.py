@@ -4,7 +4,7 @@ import sys
 import math
 import argparse
 from sklearn.neighbors import NearestNeighbors
-from data_utils import partition_the_data_validate, read_claim2vector_embedding_file_no_vector
+from RecSysProject.data_utils import partition_the_data_validate, read_claim2vector_embedding_file_no_vector
 
 
 activate_codes_num = -1
