@@ -14,10 +14,10 @@ def run_model(
 ):
     set_global_seed(42)
     model = model_cls(**vparams)
-
+    print('Fitting model...')
     set_global_seed(42)
     model.fit(dataset=dataset)
-
+    print('Evaluating model...')
     set_global_seed(42)
     performance_dict = evaluator.evaluate_recommender(model)
 

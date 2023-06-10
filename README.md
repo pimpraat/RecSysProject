@@ -1,77 +1,84 @@
-# Time-dependent Next-basket Recommendations
+## TIFUKNN
 
-## Hyperparameter search space
+### Reproducing the results
 
-### G-Pop (top_popular)
-```python
-preprocessing = trial.suggest_categorical("preprocessing", [None, "binary", "log"])
+#### Environment
+
+To reproduce the results you need to create an environment. All required packages are listed in the `requirements.txt` file.
+
+#### Datasets
+
+Before running the code you need to download the datasets. Datasets can be find here:
+
+**Instacart**: https://www.kaggle.com/c/instacart-market-basket-analysis/data \
+**Dunnhumby**: https://www.dunnhumby.com/source-files/ \
+**Tafeng**: https://www.kaggle.com/chiranjivdas09/ta-feng-grocery-dataset
+
+After downloading the dataset you need to put it in the 'data' directory in the folder with name of the dataset in subfolder 'raw'.
+
+
+The hierarchy of your repository should look as follows:
+```
+└── RecSys
+    |
+    ├── bin
+    |
+    ├── data
+    |   ├── dunnhumby
+    |   |   └── raw
+    |   |       ├── campaign_desc.csv
+    |   |       ├── campaign_table.csv
+    |   |       ├── casual_data.csv
+    |   |       ├── coupon.csv
+    |   |       ├── coupon_redempt.csv
+    |   |       ├── hh_demographic.csv
+    |   |       ├── product.csv
+    |   |       └── transaction_data.csv
+    |   |     
+    |   ├── instacart
+    |   |   └── raw
+    |   |       ├── aisles.csv
+    |   |       ├── departments.csv
+    |   |       ├── order_products__prior.csv
+    |   |       ├── order_products__train.csv
+    |   |       ├── orders.csv
+    |   |       └── products.csv
+    |   |
+    |   └── tafeng
+    |       └── raw
+    |           └── ta_feng_all_months_merged.csv
+    |
+    ├── results
+    └── src
+
 ```
 
-### GP-Pop (top_personal)
+#### Running the code
+To reproduce the results with default hyperparameters you need to run the following command:
 ```python
-min_freq = trial.suggest_int("min_freq", 1, 20)
-preprocessing_popular = trial.suggest_categorical(
-    "preprocessing_popular", [None, "binary", "log"]
-)
-preprocessing_personal = trial.suggest_categorical(
-    "preprocessing_personal", [None, "binary", "log"]
-)
+python run_experiment.py
 ```
 
-### UP-CF@r (up_cf)
+If you want to change the hyperparameters just add '--argument value' to the command above. 
+
+For example:
 ```python
-recency = trial.suggest_categorical("recency", [1, 5, 25, 100])
-q = trial.suggest_categorical("q", [1, 5, 10, 50, 100, 1000])
-alpha = trial.suggest_categorical("alpha", [0, 0.25, 0.5, 0.75, 1])
-topk_neighbors = trial.suggest_categorical("topk_neighbors", [None, 10, 100, 300, 600, 900])
-preprocessing = trial.suggest_categorical("preprocessing", [None, "binary"])
+python run_experiment.py --num_nearest_neighbors 100
 ```
 
-### TIFU-KNN (tifuknn)
-```python
-num_nearest_neighbors = trial.suggest_categorical(
-    "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
-)
-within_decay_rate = trial.suggest_categorical(
-    "within_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-)
-group_decay_rate = trial.suggest_categorical(
-    "group_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-)
-alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-group_count = trial.suggest_int("group_count", 2, 23)
-```
+List of all avaliable arguments:
+> --dataset (str): Name of the dataset. \
+> --model (str): Name of the model. \
+> --cutoff_list (list): List of cutoffs. \
+> --batch_size (int): Batch size. \
+> --dataset_dir_name (str): Name of the dataset directory. \
+> --verbose (bool, optional): Whether to print progress. Defaults to True. \
+> --num_nearest_neighbors (int, optional): Number of nearest neighbors. \
+> --within_decay_rate (float, optional): Within decay rate. \
+> --group_decay_rate (float, optional): Group decay rate. \
+> --group_count (int, optional): Group count. \
+> --alpha (float, optional): Alpha.
 
-### TIFU-KNN-TA (tifuknn_time_days)
-```python
-num_nearest_neighbors = trial.suggest_categorical(
-    "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
-)
-within_decay_rate = trial.suggest_categorical(
-    "within_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-)
-group_decay_rate = trial.suggest_categorical(
-    "group_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-)
-alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-group_size_days = trial.suggest_int("group_size_days", 1, 365)
-use_log = trial.suggest_categorical("use_log", [True, False])
-```
-
-### TIFU-KNN-TD (tifuknn_time_days_next_ts)
-```python
-num_nearest_neighbors = trial.suggest_categorical(
-    "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
-)
-within_decay_rate = trial.suggest_categorical(
-    "within_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-)
-group_decay_rate = trial.suggest_categorical(
-    "group_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-)
-alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-group_size_days = trial.suggest_int("group_size_days", 1, 365)
-use_log = trial.suggest_categorical("use_log", [True, False])
-```
-
+Results will be saved in the 'results' directory as .txt file with the name indicating arguments used 
+`{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}.txt`
 

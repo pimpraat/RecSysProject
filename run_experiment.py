@@ -77,14 +77,14 @@ def run_experiment(
     data.load_split()
 
     evaluator_test = Evaluator(dataset_df=data.test_df, cutoff_list=cutoff_list, batch_size=batch_size, verbose=verbose)
-
+    print("Running model...")
     results = run_model(
         dataset=data,
         model_cls=model_cls,
         evaluator=evaluator_test,
         vparams=vparams,
     )
-
+    print("Done!")
     print(results)
 
     with open(os.path.join(RESULTS_DIR, f"{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}.txt"), "w") as fp:

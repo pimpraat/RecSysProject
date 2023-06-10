@@ -1,6 +1,3 @@
-import math
-
-import optuna
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
@@ -41,7 +38,7 @@ class TIFUKNNRecommender(IRecommender):
         )
 
         self._nbrs = NearestNeighbors(
-            n_neighbors=self.num_nearest_neighbors + 1,
+            n_neighbors=self.num_nearest_neighbors + 1, # TODO: Why +1?
             algorithm="brute",
         ).fit(self._user_vectors)
 
@@ -64,22 +61,45 @@ class TIFUKNNRecommender(IRecommender):
         pred_matrix = self.alpha * user_vectors + (1 - self.alpha) * user_nn_vectors
         return pred_matrix
 
+    # def _calculate_basket_weight(self, df: pd.DataFrame):
+    #     df = df.sort_values(by="timestamp", ascending=False, ignore_index=True)
+    #
+    #     group_size = math.ceil(len(df) / self.group_count)
+    #     df["group_num"] = df.index // group_size
+    #     real_group_count = df["group_num"].max() + 1
+    #
+    #     df["basket_count"] = group_size
+    #     df.loc[df["group_num"] == len(df) // group_size, "basket_count"] = len(df) % group_size
+    #     df["basket_num"] = df.groupby("group_num").cumcount()
+    #
+    #     df["weight"] = (self.group_decay_rate ** df["group_num"] / real_group_count) * (
+    #         self.within_decay_rate ** df["basket_num"] / df["basket_count"]
+    #     )
+    #
+    #     df.drop(columns=["group_num", "basket_count", "basket_num"], inplace=True)
+    #     return df
+
     def _calculate_basket_weight(self, df: pd.DataFrame):
+        # Faster implementation using numpy instead of pandas
         df = df.sort_values(by="timestamp", ascending=False, ignore_index=True)
 
-        group_size = math.ceil(len(df) / self.group_count)
-        df["group_num"] = df.index // group_size
-        real_group_count = df["group_num"].max() + 1
+        group_size = np.ceil(len(df) / self.group_count)
+        real_group_count = np.ceil(len(df) / group_size)
 
-        df["basket_count"] = group_size
-        df.loc[df["group_num"] == len(df) // group_size, "basket_count"] = len(df) % group_size
-        df["basket_num"] = df.groupby("group_num").cumcount()
+        group_num = np.arange(len(df)) // group_size
+        basket_count = np.full(len(df), group_size)
 
-        df["weight"] = (self.group_decay_rate ** df["group_num"] / real_group_count) * (
-            self.within_decay_rate ** df["basket_num"] / df["basket_count"]
-        )
+        last_group_size = len(df) - (real_group_count - 1) * group_size
+        basket_count[group_num == real_group_count - 1] = last_group_size
 
-        df.drop(columns=["group_num", "basket_count", "basket_num"], inplace=True)
+        basket_num = np.arange(len(df)) % group_size
+
+        group_decay = self.group_decay_rate ** group_num / real_group_count
+        within_decay = self.within_decay_rate ** basket_num / basket_count
+        weight = group_decay * within_decay
+
+        df["weight"] = weight
+
         return df
 
     # @classmethod
