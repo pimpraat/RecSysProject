@@ -15,6 +15,7 @@ class TIFUKNNRecommender(IRecommender):
         group_decay_rate: float = 0.7,
         alpha: float = 0.7,
         group_count: int = 7,
+        similarity_measure: str = 'euclidean',
     ) -> None:
         super().__init__()
         self.num_nearest_neighbors = num_nearest_neighbors
@@ -25,6 +26,8 @@ class TIFUKNNRecommender(IRecommender):
 
         self._user_vectors = None
         self._nbrs = None
+
+        self.similarity_measure = similarity_measure
 
     def fit(self, dataset: NBRDatasetBase):
         user_basket_df = dataset.train_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
@@ -40,6 +43,7 @@ class TIFUKNNRecommender(IRecommender):
         self._nbrs = NearestNeighbors(
             n_neighbors=self.num_nearest_neighbors + 1, # TODO: Why +1?
             algorithm="brute",
+            metric=self.similarity_measure
         ).fit(self._user_vectors)
 
         return self
