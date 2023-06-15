@@ -1,4 +1,5 @@
 import os
+import time
 
 import pandas as pd
 
@@ -26,8 +27,11 @@ class VSDataset(NBRDatasetBase):
 
         transaction_data_path = os.path.join(self.raw_path, "transactions.csv")
         df = pd.DataFrame()
-        for chunk in  pd.read_csv(transaction_data_path,low_memory=False, memory_map=True, chunksize=100000):
-             df = pd.concat([df, chunk], ignore_index=True)
+        print(f"Total = {len(list(enumerate(pd.read_csv(transaction_data_path,low_memory=False, memory_map=True, chunksize=100000))))} chunks")
+        for chunk in enumerate(pd.read_csv(transaction_data_path,low_memory=False, memory_map=True, chunksize=100000)):
+            start = time.time()
+            df = pd.concat([df, chunk], ignore_index=True)
+            print(f"Took  {start - time.time()}")
 
         print("Did succeed in reading the csv")
 

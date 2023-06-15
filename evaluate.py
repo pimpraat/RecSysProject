@@ -38,7 +38,7 @@ HPARAMS = {
         }
 }
 
-dataset = "valuedshopper"
+dataset = "dunnhumby"
 model = "top_personal"
 # metric = "recall"
 batch_size = 200
@@ -98,7 +98,7 @@ for s_metric in ['euclidean']:#['canberra', 'chebyshev', 'mahalanobis', 'sqeucli
     #     'sim_measure': s_metric
     #     }
 
-    # data_object[str([model, dataset, s_metric])]= performance_dct
+    data_object[str([model, dataset, s_metric])]= performance_dct
     for k, v in performance_dct.items(): print(f"{k}: {v}")
 
 with open("results/data.json", "w+") as fp: json.dump(data_object, fp, indent=4)
