@@ -5,6 +5,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+import scipy
 
 from src.metrics import METRICS, IMetric
 from src.models import IRecommender, IRecommenderNextTs
@@ -70,7 +71,11 @@ class Evaluator:
         for true_basket_i, scores_i in zip(true_baskets_batch, scores_batch):
 
             true_basket = np.array(true_basket_i)
-            model_scores = scores_i.toarray().squeeze()
+            
+            if isinstance(scores_i, scipy.sparse._csr.csr_matrix):
+                model_scores = scores_i.toarray().squeeze()
+            else:
+                model_scores = scores_i.squeeze()
 
             for metric in self.metrics:
                 if self.save_user_metrics:

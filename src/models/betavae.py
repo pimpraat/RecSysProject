@@ -5,11 +5,13 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch import optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from src.models.core import IRecommender
 from src.dataset import NBRDatasetBase
 from abc import abstractmethod
 from typing import List, Callable, Union, Any, TypeVar, Tuple
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 Tensor = TypeVar('torch.tensor')
 
@@ -90,8 +92,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         self.alpha = alpha
         self.group_count = group_count
 
-        self._train_user_vectors = None
-        self._val_user_vectors = None
+        self._user_vectors = None
         self._nbrs = None
 
         self.latent_dim = 128
@@ -110,6 +111,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         self.kld_weight = 0.0025
 
         self.predictor = None
+        self.predictor_loss_fn = None
     
 
     def encode(self, input: Tensor) -> List[Tensor]:
@@ -163,7 +165,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
         loss = recons_loss + self.beta * kld_weight * kld_loss
 
-        return {'loss': loss, 'Reconstruction_Loss':recons_loss, 'KLD':kld_loss}
+        return {'loss': loss, 'Reconstruction_Loss': recons_loss, 'KLD': kld_loss}
     
     
     def prepare_user_vecs(self, dataset, user_basket_df):
@@ -178,8 +180,8 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         return _user_vectors, total_items
 
 
-    def validate_vae(self):
-        total_users = self._val_user_vectors.shape[0]
+    def validate_vae(self, val_user_vectors):
+        total_users = val_user_vectors.shape[0]
         batch_size = 32
         loss_total = 0.0
         recon_loss_total = 0.0
@@ -189,7 +191,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         self.eval()
         with torch.no_grad():
             for i in range(0, total_users, batch_size):
-                batch = torch.tensor(self._train_user_vectors[i:i+batch_size].todense(), dtype=torch.float)
+                batch = torch.tensor(val_user_vectors[i:i+batch_size].todense(), dtype=torch.float)
                 results = self.forward(batch)
                 val_loss = self.loss_function(results, self.kld_weight)
                 loss_total += val_loss['loss']
@@ -197,23 +199,53 @@ class BetaVAERecommender(BaseVAE, IRecommender):
                 kld_loss_total += val_loss['KLD']
                 iters += 1
         
-        agg_loss = {'loss': loss_total/iters, 'Reconstruction_Loss': recon_loss_total/iters, 'KLD': kld_loss_total/iters}
+        agg_loss = {'loss': loss_total, 'Reconstruction_Loss': recon_loss_total, 'KLD': kld_loss_total}
         return agg_loss
+
+
+    def validate_predictor(self, user_vectors, next_basket):
+        self.eval()
+        self.predictor.eval()
+        user_latent_reps = []
+        batch_size = 32
+        total_users = user_vectors.shape[0]
+        loss_total = 0
+        iters = 0
+
+        with torch.no_grad():
+            for i in range(0, total_users, batch_size):
+                batch = torch.tensor(user_vectors[i:i+batch_size].todense(), dtype=torch.float)
+                mu, log_var = self.encode(batch)
+                z = self.reparameterize(mu, log_var)
+                user_latent_reps.append(z)
+
+            user_latent_reps = torch.cat(user_latent_reps)
+
+            for i in range(0, total_users, batch_size):
+                predict = self.predictor.forward(user_latent_reps[i:i+batch_size])
+                # predict = softmaxer(predict)
+
+                target_basket = torch.tensor(next_basket[i:i+batch_size].todense(), dtype=torch.float)
+                loss = self.predictor_loss_fn(predict, target_basket)
+
+                loss_total += loss.item()
+                iters += 1
+        return loss_total
     
 
     def fit(self, dataset: NBRDatasetBase):
         # Prepare train dataset
         user_basket_df = dataset.train_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
         user_basket_df.reset_index(drop=True, inplace=True)
-        user_vectors, train_total_items = self.prepare_user_vecs(dataset, user_basket_df)
+        self._user_vectors, train_total_items = self.prepare_user_vecs(dataset, user_basket_df)
         input_size = train_total_items
 
         # Split into train-val dataset
-        self._train_user_vectors, self._val_user_vectors = train_test_split(user_vectors, test_size=0.3, random_state=42)
+        train_user_vectors, val_user_vectors = train_test_split(self._user_vectors, test_size=0.16, random_state=42)
 
         print("Train total items: ", train_total_items)
-        print("Train total users: ", self._train_user_vectors.shape[0])
-        print("Val total users: ", self._val_user_vectors.shape[0])
+        print("Train total users: ", train_user_vectors.shape[0])
+        print("Val total users: ", val_user_vectors.shape[0])
         
         # Build Encoder
         modules = []
@@ -252,35 +284,42 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             nn.Tanh())
         
         # Training VAE
-        n_epochs = 1
+        print("Training VAE")
+
+        n_epochs = 25
         batch_size = 32
 
         optimizer = optim.Adam(self.parameters(),
                                lr=self.lr,
                                weight_decay=self.weight_decay)
+        scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=1)
 
-        total_users = self._train_user_vectors.shape[0]
+        total_users = train_user_vectors.shape[0]
 
         total_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         print("Total parameters: ", total_params)
 
         for epoch in range(n_epochs):
             self.train()
+            print(f"Training epoch {epoch}")
 
-            for i in range(0, total_users, batch_size):
+            for i in tqdm(range(0, total_users, batch_size)):
                 optimizer.zero_grad()
-                batch = torch.tensor(self._train_user_vectors[i:i+batch_size].todense(), dtype=torch.float)
+                batch = torch.tensor(train_user_vectors[i:i+batch_size].todense(), dtype=torch.float)
                 results = self.forward(batch)
                 train_loss = self.loss_function(results, self.kld_weight)
                 train_loss['loss'].backward()
                 optimizer.step()
 
-            val_loss = self.validate_vae()
+            val_loss = self.validate_vae(val_user_vectors)
+            scheduler.step(val_loss['loss'].item())
             print("Epoch: {}, Loss: {}, ReconLoss: {}, KLD: {}".format(epoch, val_loss['loss'].item(), 
                 val_loss['Reconstruction_Loss'].item(), val_loss['KLD'].item()))
 
 
         # Train the predictor
+
+        print("Training Predictor")
         self.predictor = PredictorVAE(input_size=self.latent_dim, hidden_dims=self.hidden_dims, output_size=train_total_items)
 
         val_user_ids = list(dataset.val_df.user_id)
@@ -289,21 +328,37 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         val_user_vectors_true, _ = self.prepare_user_vecs(dataset, val_user_basket_df)
         val_user_vectors_true = val_user_vectors_true[val_user_ids]
 
-        user_latent_reps = []
+        test_user_ids = list(dataset.test_df.user_id)
+        test_user_basket_df = dataset.test_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
+        test_user_basket_df.reset_index(drop=True, inplace=True)
+        test_user_vectors_true, _ = self.prepare_user_vecs(dataset, test_user_basket_df)
+        test_user_vectors_true = test_user_vectors_true[test_user_ids]
 
-        user_vectors_val = user_vectors[val_user_ids]
+        user_vectors_val = self._user_vectors[val_user_ids]
+        user_vectors_test = self._user_vectors[test_user_ids]
+
         total_users = user_vectors_val.shape[0]
         batch_size = 32
-        n_epochs = 1
+        n_epochs = 100
+        lr_predictor = 0.1
         
         predictor_optimizer = optim.Adam(self.predictor.parameters(),
-                               lr=self.lr,
+                               lr=lr_predictor,
                                weight_decay=self.weight_decay)
+        predictor_scheduler = ReduceLROnPlateau(predictor_optimizer, factor=0.5, patience=1)
+        # softmaxer = nn.LogSoftmax(dim=1)
+        self.predictor_loss_fn = nn.MSELoss()
+        # self.predictor_loss_fn = nn.CrossEntropyLoss()
         
         self.eval()
 
         for epoch in range(n_epochs):
             self.predictor.train()
+            user_latent_reps = []
+            train_loss_total = 0
+            iters = 0
+
+            print(f"Training epoch {epoch}")
 
             with torch.no_grad():
                 for i in range(0, total_users, batch_size):
@@ -314,13 +369,44 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
             user_latent_reps = torch.cat(user_latent_reps)
 
-            for i in range(0, total_users, batch_size):
+            for i in tqdm(range(0, total_users, batch_size)):
+                predictor_optimizer.zero_grad()
                 predict = self.predictor.forward(user_latent_reps[i:i+batch_size])
-                print("DOING!")
-    
+                # predict = softmaxer(predict)
+
+                target_basket = torch.tensor(val_user_vectors_true[i:i+batch_size].todense(), dtype=torch.float)
+                train_loss = self.predictor_loss_fn(predict, target_basket)
+                train_loss.backward()
+                predictor_optimizer.step()
+
+                train_loss_total += train_loss.item()
+                iters += 1
+
+            val_loss = self.validate_predictor(user_vectors_test, test_user_vectors_true)
+            predictor_scheduler.step(val_loss)
+            print("Epoch: {}, Val Loss: {}".format(epoch, val_loss))
+
+        print("PREDICTOR TRAINED!")
+
+        return self
     
     def predict(self, user_ids, topk=None):
-        pass
+        if topk is None:
+            topk = self._user_vectors.shape[1]  ## Not being used, copied from tifuknn
+
+        user_vectors = self._user_vectors[user_ids, :]
+        # softmaxer = nn.LogSoftmax(dim=1)
+        self.eval()
+        self.predictor.eval()
+
+        with torch.no_grad():
+            batch = torch.tensor(user_vectors.todense(), dtype=torch.float)
+            mu, log_var = self.encode(batch)
+            user_latent_reps = self.reparameterize(mu, log_var)
+            predict = self.predictor.forward(user_latent_reps)
+            # predict = softmaxer(predict)
+        
+        return predict.numpy()
 
 
     def _calculate_basket_weight(self, df: pd.DataFrame):
