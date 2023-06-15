@@ -7,6 +7,6 @@ from .core import IRecommender, IRecommenderNextTs
 
 MODELS = {
     "tifuknn": TIFUKNNRecommender,
-    "betavae": BetaVAERecommender
+    "betavae": BetaVAERecommender,
     "top_personal": TopPersonalRecommender
 }

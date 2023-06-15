@@ -9,10 +9,11 @@ def mrr_at_k(true_basket: np.ndarray, model_scores: np.ndarray, topk: int):
     scores = model_scores.copy()
 
     predicted_items = model_scores.argsort()[::-1]
+    predicted_items = predicted_items#[0:topk]
 
     # TODO: Check/verify!
-    for idx, real_item in enumerate(true_basket):
-       if real_item in predicted_items:
+    for idx, real_item in enumerate(predicted_items):
+       if real_item in true_basket:
            return 1/(idx+1)
 
 class MRR(IMetric):

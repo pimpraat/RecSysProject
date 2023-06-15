@@ -2,19 +2,16 @@
 
 #SBATCH --partition=gpu_titanrtx_shared_course
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=EvaluateTIFUKNN
+#SBATCH --job-name=Unpack
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=3
 #SBATCH --time=04:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=evaluate.out
+#SBATCH --output=unpackVS.out
 
 module purge
 module load 2021
 module load Anaconda3/2021.05
 
-cd $HOME/RecSysProject/
-
-source activate nbr
-
-srun python -u evaluate.py
+cd $HOME/RecSysProject/data/valuedshopper
+gzip -dk transactions.csv.gz

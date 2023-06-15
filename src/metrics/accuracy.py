@@ -11,11 +11,13 @@ def accuracy_at_k(true_basket: np.ndarray, model_scores: np.ndarray, topk: int):
     # print(f"model selected: ")
     scores = model_scores.copy()
 
-    predicted_items = model_scores.argsort()[::-1][:len(true_basket)]
+    predicted_items = model_scores.argsort()[::-1][:topk]
+    #TODO: Check this is a mess!
+    # return np.count_nonzero(np.isin(predicted_items, true_basket))/topk
 
     return np.count_nonzero(np.isin(predicted_items, true_basket))/len(true_basket)
 
-    print(np.isin(predicted_items, true_basket))
+    # print(np.isin(predicted_items, true_basket))
     # print(f"predicted items for the basket: {predicted_items}")
 
 

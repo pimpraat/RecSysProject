@@ -11,8 +11,8 @@ def precision_at_k(true_basket: np.ndarray, model_scores: np.ndarray, topk: int)
     fp = np.count_nonzero(scores[true_basket][:len(true_basket)]==0)
     # print(f"tp: {tp}, fp:{fp}")
     
-    precision = tp / (tp + fp)
-    assert (tp + fp) == len(true_basket)
+    precision = tp / topk
+    # assert (tp + fp) == len(true_basket)
     return precision
 
 class Precision(IMetric):
