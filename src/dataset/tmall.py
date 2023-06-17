@@ -47,7 +47,7 @@ class TmallDataset(NBRDatasetBase):
 
         df = df.merge(item_counts, on=['user_id', 'basket_id'], how='left')
 
-        df = df[df.item_count >= 5]
+        df = df[df.item_count >= 4]
 
         df.drop(columns=['item_count'], inplace=True)
 

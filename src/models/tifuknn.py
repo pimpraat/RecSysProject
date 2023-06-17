@@ -41,7 +41,7 @@ class TIFUKNNRecommender(IRecommender):
         )
 
         self._nbrs = NearestNeighbors(
-            n_neighbors=self.num_nearest_neighbors + 1, # TODO: Why +1?
+            n_neighbors=self.num_nearest_neighbors,
             algorithm="brute",
             metric=self.similarity_measure
         ).fit(self._user_vectors)

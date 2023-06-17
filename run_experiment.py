@@ -92,7 +92,7 @@ def run_experiment(
 
 def create_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="tafeng")
+    parser.add_argument("--dataset", type=str, default="taobao")
     parser.add_argument("--model", type=str, default="tifuknn")
     parser.add_argument("--cutoff_list", type=int, default=[10, 20])
     parser.add_argument("--batch-size", type=int, default=1000)
