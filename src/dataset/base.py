@@ -183,17 +183,22 @@ class NBRDatasetBase(ABC):
         if random_basket:
             data = shuffle(data, random_state=random_state)
         else:
-            data.sort_values(by=["timestamp"], inplace=True)
+            data.sort_values(by=['user_id', 'timestamp'], inplace=True)
 
-        last_baskets = data.groupby("user_id").last()["basket_id"]
-        data.loc[data["basket_id"].isin(last_baskets), "split_flag"] = "validate"
+        test_data = data.groupby(["user_id"]).tail(1)[['user_id', 'basket_id']]
+        test_data["split"] = "test"
 
-        users = data["user_id"].unique()
-        test_size = math.ceil(len(users) * test_users_rate)
-        test_users = shuffle(users, random_state=random_state)[:test_size]
-        data.loc[
-            (data["user_id"].isin(test_users)) & (data["split_flag"] == "validate"), "split_flag"
-        ] = "test"
+        data = data.merge(test_data, on=['user_id', 'basket_id'], how='left')
+
+        data['split_flag'] = data['split'].fillna(data['split_flag'])
+
+        data.drop(columns=['split'], inplace=True)
+        # users = data["user_id"].unique()
+        # test_size = math.ceil(len(users) * test_users_rate)
+        # test_users = shuffle(users, random_state=random_state)[:test_size]
+        # data.loc[
+        #     (data["user_id"].isin(test_users)) & (data["split_flag"] == "validate"), "split_flag"
+        # ] = "test"
 
         return data
 

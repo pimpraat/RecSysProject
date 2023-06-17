@@ -72,7 +72,7 @@ def run_experiment(
 
     data = dataset_cls(dataset_dir_name, verbose=verbose)
     dataset_split_path = os.path.join(DATA_DIR, dataset_dir_name, "split")
-    if not os.path.exists(dataset_split_path):
+    if not os.path.exists(os.path.join(dataset_split_path, "train.csv")):
         data.make_leave_one_basket_split()
     data.load_split()
 
@@ -103,7 +103,6 @@ def create_parser():
     parser.add_argument("--group_count", type=int, default=7)
     parser.add_argument("--alpha", type=float, default=0.7)
     return parser
-
 
 if __name__ == "__main__":
     parser = create_parser()

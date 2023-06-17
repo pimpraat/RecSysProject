@@ -24,27 +24,17 @@ class InstacartDataset(NBRDatasetBase):
         )
 
     def _preprocess(self) -> pd.DataFrame:
+        transaction_data_path1 = os.path.join(self.raw_path, "Instacart_future.csv")
+        transaction_data_path2 = os.path.join(self.raw_path, "Instacart_history.csv")
+        df1 = pd.read_csv(transaction_data_path1)
+        df2 = pd.read_csv(transaction_data_path2)
 
-        orders = pd.read_csv(os.path.join(self.raw_path, "orders.csv"))
-        orders = orders[orders["eval_set"] != "test"].fillna(0)
-        orders["timestamp"] = orders.groupby("user_id")["days_since_prior_order"].cumsum()
-        orders["timestamp"] = pd.to_datetime(
-            orders.timestamp * 86400 + orders.order_hour_of_day * 3600 + orders.order_number,
-            unit="s",
-        )
-        orders = orders[["order_id", "user_id", "timestamp"]]
+        df = pd.concat([df1, df2], ignore_index=True)
 
-        order_products_prior = pd.read_csv(os.path.join(self.raw_path, "order_products__prior.csv"))
-        order_products_train = pd.read_csv(os.path.join(self.raw_path, "order_products__train.csv"))
-        order_products = pd.concat([order_products_prior, order_products_train])
-        order_products = order_products[["order_id", "product_id"]]
-
-        interactions = orders.set_index("order_id").join(
-            order_products.set_index("order_id"), how="inner"
-        )
-        interactions = interactions.reset_index().rename(
-            columns={"order_id": "basket_id", "product_id": "item_id"}
+        df['timestamp'] = pd.to_datetime(df['ORDER_NUMBER'])
+        df = df.rename(
+            columns={'CUSTOMER_ID': 'user_id', 'ORDER_NUMBER': 'basket_id', 'MATERIAL_NUMBER': 'item_id'}
         )
 
-        df = interactions[["user_id", "basket_id", "item_id", "timestamp"]].drop_duplicates()
+        df = df.drop_duplicates()
         return df

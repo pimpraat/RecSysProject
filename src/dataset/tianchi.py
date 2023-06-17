@@ -11,7 +11,7 @@ class TianchiDataset(NBRDatasetBase):
         dataset_folder_name: str = "tianchi",
         min_baskets_per_user: int = 3,
         min_items_per_user: int = 0,
-        min_users_per_item: int = 5,
+        min_users_per_item: int = 1,
         verbose=False,
     ):
         super().__init__(

@@ -23,16 +23,17 @@ class DunnhumbyDataset(NBRDatasetBase):
         )
 
     def _preprocess(self) -> pd.DataFrame:
-        transaction_data_path = os.path.join(self.raw_path, "transaction_data.csv")
-        df = pd.read_csv(transaction_data_path)
+        transaction_data_path1 = os.path.join(self.raw_path, "Dunnhumby_future.csv")
+        transaction_data_path2 = os.path.join(self.raw_path, "Dunnhumby_history.csv")
+        df1 = pd.read_csv(transaction_data_path1)
+        df2 = pd.read_csv(transaction_data_path2)
 
+        df = pd.concat([df1, df2], ignore_index=True)
+
+        df['timestamp'] = pd.to_datetime(df['ORDER_NUMBER'])
         df = df.rename(
-            columns={"household_key": "user_id", "BASKET_ID": "basket_id", "PRODUCT_ID": "item_id"}
-        )
-        df["timestamp"] = pd.to_datetime(
-            df.DAY * 1440 + df.TRANS_TIME // 100 * 60 + df.TRANS_TIME % 100,
-            unit="m",
+            columns={'CUSTOMER_ID': 'user_id', 'ORDER_NUMBER': 'basket_id', 'MATERIAL_NUMBER': 'item_id'}
         )
 
-        df = df[["user_id", "basket_id", "item_id", "timestamp"]].drop_duplicates()
+        df = df.drop_duplicates()
         return df

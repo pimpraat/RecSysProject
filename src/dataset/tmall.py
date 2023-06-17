@@ -42,4 +42,13 @@ class TmallDataset(NBRDatasetBase):
 
         df = df.drop_duplicates()
 
+        item_counts = df.groupby(['user_id', 'basket_id'])['item_id'].count().reset_index().rename(
+            {'item_id': 'item_count'}, axis=1)
+
+        df = df.merge(item_counts, on=['user_id', 'basket_id'], how='left')
+
+        df = df[df.item_count >= 5]
+
+        df.drop(columns=['item_count'], inplace=True)
+
         return df

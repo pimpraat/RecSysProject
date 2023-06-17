@@ -8,12 +8,12 @@ from .base import NBRDatasetBase
 
 class VSDataset(NBRDatasetBase):
     def __init__(
-        self,
-        dataset_folder_name: str = "valuedshopper",
-        min_baskets_per_user: int = 3,
-        min_items_per_user: int = 0,
-        min_users_per_item: int = 5,
-        verbose=False,
+            self,
+            dataset_folder_name: str = "valuedshopper",
+            min_baskets_per_user: int = 3,
+            min_items_per_user: int = 0,
+            min_users_per_item: int = 5,
+            verbose=False,
     ):
         super().__init__(
             dataset_folder_name,
@@ -25,27 +25,16 @@ class VSDataset(NBRDatasetBase):
 
     def _preprocess(self) -> pd.DataFrame:
 
-        transaction_data_path = os.path.join(self.raw_path, "transactions.csv")
-        df = pd.DataFrame()
-        print(f"Total = {len(list(enumerate(pd.read_csv(transaction_data_path,low_memory=False, memory_map=True, chunksize=100000))))} chunks")
-        for chunk in enumerate(pd.read_csv(transaction_data_path,low_memory=False, memory_map=True, chunksize=100000)):
-            start = time.time()
-            df = pd.concat([df, chunk], ignore_index=True)
-            print(f"Took  {start - time.time()}")
+        transaction_data_path1 = os.path.join(self.raw_path, "VS_future_order.csv")
+        transaction_data_path2 = os.path.join(self.raw_path, "VS_history_order.csv")
+        df1 = pd.read_csv(transaction_data_path1)
+        df2 = pd.read_csv(transaction_data_path2)
 
-        print("Did succeed in reading the csv")
+        df = pd.concat([df1, df2], ignore_index=True)
 
-        df = df[df['act_ID'] == 1]
-
-        df = df.drop(columns=['act_ID', 'cat_ID', 'sel_ID'])
-
-        df.insert(loc=0, column='basket_id',
-                        value=df.set_index(['use_ID', 'time']).index.factorize()[0] + 1)
-
-        df['time'] = pd.to_datetime(df['time'], format='%Y%m%d')
-
+        df['timestamp'] = pd.to_datetime(df['ORDER_NUMBER'])
         df = df.rename(
-            columns={"use_ID": "user_id", "ite_ID": "item_id", 'time': 'timestamp'}
+            columns={'CUSTOMER_ID': 'user_id', 'ORDER_NUMBER': 'basket_id', 'MATERIAL_NUMBER': 'item_id'}
         )
 
         df = df.drop_duplicates()

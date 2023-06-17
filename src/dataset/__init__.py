@@ -5,6 +5,7 @@ from .tafeng import TafengDataset
 from .taobao import TaobaoDataset
 from .tmall import TmallDataset
 from .valuedshopper import VSDataset
+from .tianchi import TianchiDataset
 
 
 DATASETS = {
@@ -14,4 +15,5 @@ DATASETS = {
     "tafeng": TafengDataset,
     "taobao": TaobaoDataset,
     "tmall": TmallDataset,
+    "tianchi": TianchiDataset,
 }

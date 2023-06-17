@@ -22,13 +22,31 @@ class TafengDataset(NBRDatasetBase):
             verbose=verbose,
         )
 
+    # def _preprocess(self) -> pd.DataFrame:
+    #     transaction_data_path = os.path.join(self.raw_path, "ta_feng_all_months_merged.csv")
+    #     df = pd.read_csv(transaction_data_path)
+    #
+    #     df["timestamp"] = pd.to_datetime(df["TRANSACTION_DT"])
+    #     df.rename(columns={"CUSTOMER_ID": "user_id", "PRODUCT_ID": "item_id"}, inplace=True)
+    #     df["basket_id"] = df.groupby(["user_id", "timestamp"]).ngroup()
+    #
+    #     df = df[["user_id", "basket_id", "item_id", "timestamp"]].drop_duplicates()
+    #     return df
+
     def _preprocess(self) -> pd.DataFrame:
-        transaction_data_path = os.path.join(self.raw_path, "ta_feng_all_months_merged.csv")
-        df = pd.read_csv(transaction_data_path)
 
-        df["timestamp"] = pd.to_datetime(df["TRANSACTION_DT"])
-        df.rename(columns={"CUSTOMER_ID": "user_id", "PRODUCT_ID": "item_id"}, inplace=True)
-        df["basket_id"] = df.groupby(["user_id", "timestamp"]).ngroup()
+        transaction_data_path1 = os.path.join(self.raw_path, "TaFang_future_NB.csv")
+        transaction_data_path2 = os.path.join(self.raw_path, "TaFang_history_NB.csv")
+        df1 = pd.read_csv(transaction_data_path1)
+        df2 = pd.read_csv(transaction_data_path2)
 
-        df = df[["user_id", "basket_id", "item_id", "timestamp"]].drop_duplicates()
+        df = pd.concat([df1, df2], ignore_index=True)
+
+        df['timestamp'] = pd.to_datetime(df['ORDER_NUMBER'])
+        df = df.rename(
+            columns={'CUSTOMER_ID': 'user_id', 'ORDER_NUMBER': 'basket_id', 'MATERIAL_NUMBER': 'item_id'}
+        )
+
+        df = df.drop_duplicates()
         return df
+
