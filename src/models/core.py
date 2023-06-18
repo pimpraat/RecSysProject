@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
+import optuna
 
 from src.dataset import NBRDatasetBase
 
@@ -113,10 +114,10 @@ class IRecommender(ABC):
     def predict(self, user_ids, topk=None):
         raise NotImplementedError()
 
-    # @classmethod
-    # @abstractmethod
-    # def sample_params(cls, trial: optuna.Trial) -> dict:
-    #     raise NotImplementedError()
+    @classmethod
+    @abstractmethod
+    def sample_params(cls, trial: optuna.Trial) -> dict:
+        raise NotImplementedError()
 
 
 class IRecommenderNextTs(ABC):
@@ -131,7 +132,7 @@ class IRecommenderNextTs(ABC):
     def predict(self, user_ids, user_next_basket_ts: pd.DataFrame, topk=None):
         raise NotImplementedError()
 
-    # @classmethod
-    # @abstractmethod
-    # def sample_params(cls, trial: optuna.Trial) -> dict:
-    #     raise NotImplementedError()
+    @classmethod
+    @abstractmethod
+    def sample_params(cls, trial: optuna.Trial) -> dict:
+        raise NotImplementedError()

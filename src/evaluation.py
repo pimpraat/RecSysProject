@@ -90,6 +90,7 @@ class Evaluator:
 
             self._n_users_evaluated += 1
 
+
         if (
             time.time() - self._start_time_print > 300
             or self._n_users_evaluated == self._num_users_to_evaluate
@@ -136,6 +137,8 @@ class Evaluator:
                     topk=self._max_cutoff,
                 )
 
+            # slice = self.dataset_df.iloc[users_batch_start:users_batch_end]
+            # true_baskets_batch = slice.basket
             true_baskets_batch = self.dataset_df.iloc[users_batch_start:users_batch_end].basket
             self._compute_metrics_on_recommendation_list(
                 true_baskets_batch=true_baskets_batch,

@@ -1,13 +1,14 @@
 import argparse
 import os
 import json
+import pandas as pd
 
 from src.dataset import DATASETS
 from src.models import MODELS
 from src.settings import DATA_DIR, RESULTS_DIR
 from src.evaluation import Evaluator
-from src.hypertuning import run_model
-
+from src.run import run_model
+from src.hypertuning import run_search
 
 def run_experiment(
     dataset: str,
@@ -21,6 +22,8 @@ def run_experiment(
     group_decay_rate=0.7,
     group_count=7,
     alpha=0.7,
+    hypertuning=False,
+    save_user_metrics=False,
 ):
     """
     Run a single experiment with the given parameters.
@@ -76,23 +79,45 @@ def run_experiment(
         data.make_leave_one_basket_split()
     data.load_split()
 
-    evaluator_test = Evaluator(dataset_df=data.test_df, cutoff_list=cutoff_list, batch_size=batch_size, verbose=verbose)
-    print("Running model...")
-    results = run_model(
-        dataset=data,
-        model_cls=model_cls,
-        evaluator=evaluator_test,
-        vparams=vparams,
-    )
-    print("Done!")
-    print(results)
+    evaluator_test = Evaluator(dataset_df=data.test_df, cutoff_list=cutoff_list, batch_size=batch_size, verbose=verbose, save_user_metrics=save_user_metrics)
 
-    with open(os.path.join(RESULTS_DIR, f"{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}.txt"), "w") as fp:
-        json.dump(results, fp)
+    if not hypertuning:
+        print("Running model...")
+        results = run_model(
+            dataset=data,
+            model_cls=model_cls,
+            evaluator=evaluator_test,
+            vparams=vparams,
+        )
+        print("Done!")
+        print(results)
+
+        with open(os.path.join(RESULTS_DIR, f"{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}_results.txt"), "w") as fp:
+            json.dump(results, fp)
+    else:
+        print("Running hypertuning...")
+        run_search(
+            dataset=data,
+            model_cls=model_cls,
+            evaluator_valid=evaluator_test,
+            evaluator_test=evaluator_test,
+            metric='recall',
+            cutoff=10,
+            num_trials=25,
+            prefix=f"{dataset}_{model}",
+        )
+
+
+
+    if save_user_metrics:
+        user_metrics = evaluator_test.user_metrics.copy()
+        user_metrics['user_id'] = data.test_df.user_id
+        user_metrics_df = pd.DataFrame.from_dict(user_metrics)
+        user_metrics_df.to_csv(os.path.join(RESULTS_DIR, f"{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}_user_metrics.csv"), index=False)
 
 def create_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="taobao")
+    parser.add_argument("--dataset", type=str, default="tafeng")
     parser.add_argument("--model", type=str, default="tifuknn")
     parser.add_argument("--cutoff_list", type=int, default=[10, 20])
     parser.add_argument("--batch-size", type=int, default=1000)
@@ -102,6 +127,8 @@ def create_parser():
     parser.add_argument("--group_decay_rate", type=float, default=0.7)
     parser.add_argument("--group_count", type=int, default=7)
     parser.add_argument("--alpha", type=float, default=0.7)
+    parser.add_argument("--hypertuning", type=bool, default=False)
+    parser.add_argument("--save_user_metrics", type=bool, default=False)
     return parser
 
 if __name__ == "__main__":
@@ -118,4 +145,6 @@ if __name__ == "__main__":
         group_decay_rate=args.group_decay_rate,
         group_count=args.group_count,
         alpha=args.alpha,
+        hypertuning=args.hypertuning,
+        save_user_metrics=args.save_user_metrics,
     )

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sps
 from sklearn.neighbors import NearestNeighbors
+import optuna
 
 from src.models.core import IRecommender
 from src.dataset import NBRDatasetBase
@@ -106,23 +107,23 @@ class TIFUKNNRecommender(IRecommender):
 
         return df
 
-    # @classmethod
-    # def sample_params(cls, trial: optuna.Trial) -> dict:
-    #     num_nearest_neighbors = trial.suggest_categorical(
-    #         "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
-    #     )
-    #     within_decay_rate = trial.suggest_categorical(
-    #         "within_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    #     )
-    #     group_decay_rate = trial.suggest_categorical(
-    #         "group_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    #     )
-    #     alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-    #     group_count = trial.suggest_int("group_count", 2, 23)
-    #     return {
-    #         "num_nearest_neighbors": num_nearest_neighbors,
-    #         "within_decay_rate": within_decay_rate,
-    #         "group_decay_rate": group_decay_rate,
-    #         "alpha": alpha,
-    #         "group_count": group_count,
-    #     }
+    @classmethod
+    def sample_params(cls, trial: optuna.Trial) -> dict:
+        num_nearest_neighbors = trial.suggest_categorical(
+            "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
+        )
+        within_decay_rate = trial.suggest_categorical(
+            "within_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        )
+        group_decay_rate = trial.suggest_categorical(
+            "group_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        )
+        alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+        group_count = trial.suggest_int("group_count", 2, 23)
+        return {
+            "num_nearest_neighbors": num_nearest_neighbors,
+            "within_decay_rate": within_decay_rate,
+            "group_decay_rate": group_decay_rate,
+            "alpha": alpha,
+            "group_count": group_count,
+        }
