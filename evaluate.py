@@ -5,6 +5,12 @@ from src.settings import DATA_DIR
 from src.evaluation import Evaluator
 # from hyperparameters_original_papers.py import HPARAMS
 import json
+import matplotlib.pyplot as plt
+import pandas as pd
+import itertools
+import numpy as np
+
+from collections import Counter
 
 HPARAMS = {
     'instacart': {
@@ -38,7 +44,7 @@ HPARAMS = {
         }
 }
 
-dataset = "dunnhumby"
+dataset = "tafeng"
 model = "top_personal"
 # metric = "recall"
 batch_size = 200
@@ -52,18 +58,43 @@ dataset_dir_name = dataset
 verbose = True
 
 data = dataset_cls(dataset_dir_name, verbose=verbose)
-if dataset in ["tafeng", 'valuedshopper']: data.make_leave_one_basket_split()
+if dataset in ["tafeng", 'valuedshopper', 'dunnhumby']: data.make_leave_one_basket_split()
 data.load_split()
 print("==========")
 
 
 # Start analysis of (average) basket size
-print(data.train_df)
+# print(data.train_df)
+# print('=====')
+df = pd.concat([data.train_df,data.test_df, data.val_df])['basket'].tolist()
+flatten = list(itertools.chain(*df))
+plt.hist(flatten)
+plt.savefig("lalals.png")
+# print(flatten)
+counter = Counter(flatten)
+# print(counter)
+# print(len(counter.keys()))
+print(counter.most_common(50))
+set1 = [x[0] for x in counter.most_common(50)]
+print(set1)
 
+# self.train_df['has_items_in_top_5_percent'] =
+# data.train_df['aggregated_baskets'] = data.train_df.groupby('user_id')['basket'].apply(list)
+# data.train_df['aggregated_baskets'] = data.train_df['aggregated_baskets'].apply(lambda x:[leaf for tree in x for leaf in data.train_df['aggregated_baskets']])
 
+df_basket_counting = data.train_df[['user_id', 'basket']]
+df_basket_counting['contains_top_10_percent_item'] = df_basket_counting['basket'].apply(lambda x: any([k in x for k in set1]))
+df_basket_counting = df_basket_counting.drop('basket')
+print(df_basket_counting)
+
+# print(data.train_df['basket'].apply(lambda x: any([k in x for k in set1])))
+
+assert(False)
+# print(df)
+# data._average_basket_size_per_user(data.train_df)
+
+# assert False
 # End analysis of (average) basket size
-
-r10, r20, ndcg10, ncdg20 = [], [], [], []
 
 
 
@@ -84,59 +115,19 @@ print(f"Data object: {data_object}")
 # braycurtis was not valid
 # 'manhattan', 'euclidean', 'cosine',
 for s_metric in ['euclidean']:#['canberra', 'chebyshev', 'mahalanobis', 'sqeuclidean']:
+
+
+    data.test_df['n_baskets_for_user'] = pd.concat([data.train_df,data.test_df, data.val_df]).groupby('user_id').count()['basket']
+    #TODO: Implement mean basket size
+    # data.test_df['mean_basket_size_for_user'] = pd.concat([data.train_df,data.test_df, data.val_df]).groupby('user_id')
+
     evaluator_test = Evaluator(dataset_df=data.test_df, cutoff_list=cutoff_list, batch_size=batch_size, verbose=verbose)
 
     best_vmodel = model_cls(**selected_params)
-
     best_vmodel.fit(dataset=data)
-
     performance_dct = evaluator_test.evaluate_recommender(best_vmodel)
-
-    # key = {
-    #     'model': model,
-    #     'dataset': dataset,
-    #     'sim_measure': s_metric
-    #     }
 
     data_object[str([model, dataset, s_metric])]= performance_dct
     for k, v in performance_dct.items(): print(f"{k}: {v}")
 
 with open("results/data.json", "w+") as fp: json.dump(data_object, fp, indent=4)
-
-# for datapercentage in [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4]:
-#     data.restrict_dataset(column_to_restrict='user_id', perc_ids_to_keep=datapercentage)
-
-
-#     for s_metric in ['euclidean']:#['canberra', 'chebyshev', 'mahalanobis', 'sqeuclidean']:
-#         evaluator_test = Evaluator(dataset_df=data.test_df, cutoff_list=cutoff_list, batch_size=batch_size, verbose=verbose)
-#         vparams = {
-#             'num_nearest_neighbors': 900, 
-#             'within_decay_rate': 0.9, 
-#             'group_decay_rate': 0.7, 
-#             'alpha': 0.9, 
-#             'group_count': 3,
-#             'similarity_measure': s_metric
-#             }
-
-#     best_vmodel = model_cls(**vparams)
-
-#     best_vmodel.fit(dataset=data)
-
-#     performance_dct = evaluator_test.evaluate_recommender(best_vmodel)
-#     print(f" Performance using the {s_metric} as similarity measure: {performance_dct}")
-#     r10.append(performance_dct['recall@010'])
-#     r20.append(performance_dct['recall@020'])
-#     ndcg10.append(performance_dct['ndcg@010'])
-#     ncdg20.append(performance_dct['ndcg@020'])
-
-#     # print(r10)
-
-# plt.plot([1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4][::-1], r10[::-1], label='recall@10')
-# plt.plot([1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4][::-1], r20[::-1], label='recall@20')
-# plt.plot([1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4][::-1], ndcg10[::-1], label='NDCG@10')
-# plt.plot([1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4][::-1], ncdg20[::-1], label='NDCG@10')
-# plt.xticks([1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4][::-1])
-# plt.xlabel(str(f"Availability of (all) data used (100%={len(list(set(data.train_df['user_id'].tolist())))} IDs)"))
-# plt.legend()
-# plt.ylabel("Performance on metric")
-# plt.savefig(str(f'{model}data_restricted_{dataset}.png'))
