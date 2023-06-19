@@ -11,6 +11,7 @@ from src.dataset import NBRDatasetBase
 from abc import abstractmethod
 from typing import List, Callable, Union, Any, TypeVar, Tuple
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
 Tensor = TypeVar('torch.tensor')
@@ -79,11 +80,12 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
     def __init__(
         self,
-        num_nearest_neighbors: int = 300,
+        num_nearest_neighbors: int = 100,
         within_decay_rate: float = 0.9,
         group_decay_rate: float = 0.7,
         alpha: float = 0.7,
         group_count: int = 7,
+        similarity_measure: str = 'euclidean',
     ) -> None:
         super().__init__()
         self.num_nearest_neighbors = num_nearest_neighbors
@@ -94,6 +96,8 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         self._user_vectors = None
         self._nbrs = None
+
+        self.similarity_measure = similarity_measure
 
         self.latent_dim = 128
         self.beta = 4
@@ -108,10 +112,11 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         self.lr = 0.005
         self.weight_decay = 0.0
-        self.kld_weight = 0.0025
+        self.kld_weight = 0.015
 
         self.predictor = None
         self.predictor_loss_fn = None
+        self.all_user_vecs = None
     
 
     def encode(self, input: Tensor) -> List[Tensor]:
@@ -286,7 +291,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         # Training VAE
         print("Training VAE")
 
-        n_epochs = 25
+        n_epochs = 20
         batch_size = 32
 
         optimizer = optim.Adam(self.parameters(),
@@ -322,24 +327,29 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         print("Training Predictor")
         self.predictor = PredictorVAE(input_size=self.latent_dim, hidden_dims=self.hidden_dims, output_size=train_total_items)
 
-        val_user_ids = list(dataset.val_df.user_id)
-        val_user_basket_df = dataset.val_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
-        val_user_basket_df.reset_index(drop=True, inplace=True)
-        val_user_vectors_true, _ = self.prepare_user_vecs(dataset, val_user_basket_df)
-        val_user_vectors_true = val_user_vectors_true[val_user_ids]
+        # val_user_ids = list(dataset.val_df.user_id)
+        # val_user_basket_df = dataset.val_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
+        # val_user_basket_df.reset_index(drop=True, inplace=True)
+        # val_user_vectors_true, _ = self.prepare_user_vecs(dataset, val_user_basket_df)
+        # val_user_vectors_true = val_user_vectors_true[val_user_ids]
 
-        test_user_ids = list(dataset.test_df.user_id)
-        test_user_basket_df = dataset.test_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
-        test_user_basket_df.reset_index(drop=True, inplace=True)
-        test_user_vectors_true, _ = self.prepare_user_vecs(dataset, test_user_basket_df)
-        test_user_vectors_true = test_user_vectors_true[test_user_ids]
+        all_user_ids = list(dataset.test_df.user_id)
+        train_user_ids, test_user_ids = train_test_split(all_user_ids, test_size=0.3, random_state=42)
 
-        user_vectors_val = self._user_vectors[val_user_ids]
+        next_user_basket_df = dataset.test_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
+        next_user_basket_df.reset_index(drop=True, inplace=True)
+        next_user_vectors_true, _ = self.prepare_user_vecs(dataset, next_user_basket_df)
+        
+        
+        test_user_vectors_true = next_user_vectors_true[test_user_ids]
+        train_user_vectors_true = next_user_vectors_true[train_user_ids]
+
+        user_vectors_train = self._user_vectors[train_user_ids]
         user_vectors_test = self._user_vectors[test_user_ids]
 
-        total_users = user_vectors_val.shape[0]
+        total_users = user_vectors_train.shape[0]
         batch_size = 32
-        n_epochs = 100
+        n_epochs = 50
         lr_predictor = 0.1
         
         predictor_optimizer = optim.Adam(self.predictor.parameters(),
@@ -362,19 +372,34 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
             with torch.no_grad():
                 for i in range(0, total_users, batch_size):
-                    batch = torch.tensor(user_vectors_val[i:i+batch_size].todense(), dtype=torch.float)
+                    batch = torch.tensor(user_vectors_train[i:i+batch_size].todense(), dtype=torch.float)
                     mu, log_var = self.encode(batch)
                     z = self.reparameterize(mu, log_var)
                     user_latent_reps.append(z)
 
             user_latent_reps = torch.cat(user_latent_reps)
 
+            self._nbrs = NearestNeighbors(
+                n_neighbors=self.num_nearest_neighbors + 1, # TODO: Why +1?
+                algorithm="brute",
+                metric=self.similarity_measure
+            ).fit(user_latent_reps)
+
+            user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
+            user_nn_vectors = []
+            for nn_indices in user_nn_indices:
+                nn_vector = user_latent_reps[nn_indices[1:], :].mean(dim=0)
+                user_nn_vectors.append(nn_vector)
+            user_nn_vectors = torch.stack(user_nn_vectors)
+
+            user_combined_vec = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
+            
             for i in tqdm(range(0, total_users, batch_size)):
                 predictor_optimizer.zero_grad()
-                predict = self.predictor.forward(user_latent_reps[i:i+batch_size])
+                predict = self.predictor.forward(user_combined_vec[i:i+batch_size])
                 # predict = softmaxer(predict)
 
-                target_basket = torch.tensor(val_user_vectors_true[i:i+batch_size].todense(), dtype=torch.float)
+                target_basket = torch.tensor(train_user_vectors_true[i:i+batch_size].todense(), dtype=torch.float)
                 train_loss = self.predictor_loss_fn(predict, target_basket)
                 train_loss.backward()
                 predictor_optimizer.step()
@@ -387,6 +412,8 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             print("Epoch: {}, Val Loss: {}".format(epoch, val_loss))
 
         print("PREDICTOR TRAINED!")
+
+        self.all_user_vecs = user_latent_reps
 
         return self
     
@@ -403,7 +430,17 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             batch = torch.tensor(user_vectors.todense(), dtype=torch.float)
             mu, log_var = self.encode(batch)
             user_latent_reps = self.reparameterize(mu, log_var)
-            predict = self.predictor.forward(user_latent_reps)
+
+            user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
+            user_nn_vectors = []
+            for nn_indices in user_nn_indices:
+                nn_vector = self.all_user_vecs[nn_indices[1:], :].mean(dim=0)
+                user_nn_vectors.append(nn_vector)
+            user_nn_vectors = torch.stack(user_nn_vectors)
+
+            user_combined_vec = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
+
+            predict = self.predictor.forward(user_combined_vec)
             # predict = softmaxer(predict)
         
         return predict.numpy()
