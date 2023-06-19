@@ -61,6 +61,7 @@ class TopPersonalRecommender(IRecommender):
         self._item_personal = None
 
     def fit(self, dataset: NBRDatasetBase):
+        print("Fitting TopPersonalRecommender...")
         self._user_item_matrix = calculate_user_item_matrix(
             dataset.train_df, dataset.num_users, dataset.num_items
         )

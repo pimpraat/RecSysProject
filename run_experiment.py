@@ -44,14 +44,22 @@ def run_experiment(
     Returns:
         dict: Dictionary with the results of the experiment.
     """
-
-    vparams = {
-        "num_nearest_neighbors": num_nearest_neighbors,
-        "within_decay_rate": within_decay_rate,
-        "group_decay_rate": group_decay_rate,
-        "group_count": group_count,
-        "alpha": alpha,
-    }
+    if model == 'tifuknn':
+        vparams = {
+            "num_nearest_neighbors": num_nearest_neighbors,
+            "within_decay_rate": within_decay_rate,
+            "group_decay_rate": group_decay_rate,
+            "group_count": group_count,
+            "alpha": alpha,
+        }
+    elif model == 'betavae':
+        pass
+    elif model == 'top_personal':
+        vparams = {
+            'min_freq': 1,
+            'preprocessing_popular': None,
+            'preprocessing_personal': None
+        }
 
     if dataset in DATASETS.keys():
         dataset_cls = DATASETS[dataset]
@@ -92,7 +100,7 @@ def run_experiment(
         print("Done!")
         print(results)
 
-        with open(os.path.join(RESULTS_DIR, f"{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}_results.txt"), "w") as fp:
+        with open(os.path.join(RESULTS_DIR, f"{model}_{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}_results.txt"), "w") as fp:
             json.dump(results, fp)
     else:
         print("Running hypertuning...")
@@ -113,7 +121,7 @@ def run_experiment(
         user_metrics = evaluator_test.user_metrics.copy()
         user_metrics['user_id'] = data.test_df.user_id
         user_metrics_df = pd.DataFrame.from_dict(user_metrics)
-        user_metrics_df.to_csv(os.path.join(RESULTS_DIR, f"{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}_user_metrics.csv"), index=False)
+        user_metrics_df.to_csv(os.path.join(RESULTS_DIR, f"{model}_{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}_user_metrics.csv"), index=False)
 
 def create_parser():
     parser = argparse.ArgumentParser()
