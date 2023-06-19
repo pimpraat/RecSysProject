@@ -14,12 +14,27 @@ module load 2022
 module load Anaconda3/2022.05
 source activate RecSys
 
-# instacart
-srun python -m run_experiments --dataset instacart --model tifuknn --batch-size 1000 --num_nearest_neighbors 300 --within_decay_rate 0.9 --group_decay_rate 0.7 --group_count 3 --alpha 0.7
-srun python -m run_experiments --dataset instacart --model tifuknn --batch-size 1000 --num_nearest_neighbors 900 --within_decay_rate 0.9 --group_decay_rate 0.7 --group_count 3 --alpha 0.7
-# tafeng
-srun python -m run_experiments --dataset tafeng --model tifuknn --batch-size 1000 --num_nearest_neighbors 900 --within_decay_rate 0.9 --group_decay_rate 0.6 --group_count 3 --alpha 0.2
-srun python -m run_experiments --dataset tafeng --model tifuknn --batch-size 1000 --num_nearest_neighbors 300 --within_decay_rate 0.9 --group_decay_rate 0.6 --group_count 3 --alpha 0.2
-# dunnhumby
-srun python -m run_experiments --dataset dunnhumby --model tifuknn --batch-size 1000 --num_nearest_neighbors 900 --within_decay_rate 0.9 --group_decay_rate 0.7 --group_count 7 --alpha 0.7
-srun python -m run_experiments --dataset dunnhumby --model tifuknn --batch-size 1000 --num_nearest_neighbors 300 --within_decay_rate 0.9 --group_decay_rate 0.7 --group_count 7 --alpha 0.7
+# instacart tifukkn
+srun python run_experiment.py --dataset instacart --model tifuknn --batch-size 1000 --num_nearest_neighbors 900 --within_decay_rate 0.9 --group_decay_rate 0.7 --group_count 3 --alpha 0.9 --save_user_metrics True
+# tafeng tifukkn
+srun python run_experiment.py --dataset tafeng --model tifuknn --batch-size 1000 --num_nearest_neighbors 300 --within_decay_rate 0.9 --group_decay_rate 0.7 --group_count 7 --alpha 0.7 --save_user_metrics True
+# dunnhumby tifukkn
+srun python run_experiment.py --dataset dunnhumby --model tifuknn --batch-size 1000 --num_nearest_neighbors 900 --within_decay_rate 0.9 --group_decay_rate 0.6 --group_count 3 --alpha 0.2 --save_user_metrics True
+# valuedshoppers tifukkn
+srun python run_experiment.py --dataset valuedshopper --model tifuknn --batch-size 1000 --num_nearest_neighbors 300 --within_decay_rate 1 --group_decay_rate 0.6 --group_count 7 --alpha 0.7 --save_user_metrics True
+# tmall tifukkn
+srun python run_experiment.py --dataset tmall --model tifuknn --batch-size 1000 --num_nearest_neighbors 100 --within_decay_rate 0.6 --group_decay_rate 0.8 --group_count 18 --alpha 0.7 --save_user_metrics True
+# taobao tifukkn
+srun python run_experiment.py --dataset taobao --model tifuknn --batch-size 1000 --num_nearest_neighbors 300 --within_decay_rate 0.6 --group_decay_rate 0.8 --group_count 10 --alpha 0.1 --save_user_metrics True
+# instacart top personal
+srun python run_experiment.py --dataset instacart --model top_personal
+# tafeng top personal
+srun python run_experiment.py --dataset tafeng --model top_personal
+# dunnhumby top personal
+srun python run_experiment.py --dataset dunnhumby --model top_personal
+# valuedshoppers top personal
+srun python run_experiment.py --dataset valuedshopper --model top_personal
+# tmall top personal
+srun python run_experiment.py --dataset tmall --model top_personal
+# taobao top personal
+srun python run_experiment.py --dataset taobao --model top_personal
