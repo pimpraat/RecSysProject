@@ -16,7 +16,6 @@ from tqdm import tqdm
 
 Tensor = TypeVar('torch.tensor')
 
-
 class BaseVAE(nn.Module):
     
     def __init__(self) -> None:
@@ -60,7 +59,8 @@ class PredictorVAE(nn.Module):
                 nn.Sequential(
                     nn.Linear(input_size, h_dim),
                     nn.BatchNorm1d(h_dim),
-                    nn.LeakyReLU())
+                    nn.LeakyReLU(),
+                    nn.Dropout(0.25))
             )
             input_size = h_dim
 
@@ -291,7 +291,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         # Training VAE
         print("Training VAE")
 
-        n_epochs = 20
+        n_epochs = 1
         batch_size = 32
 
         optimizer = optim.Adam(self.parameters(),
@@ -349,7 +349,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         total_users = user_vectors_train.shape[0]
         batch_size = 32
-        n_epochs = 50
+        n_epochs = 1
         lr_predictor = 0.1
         
         predictor_optimizer = optim.Adam(self.predictor.parameters(),
