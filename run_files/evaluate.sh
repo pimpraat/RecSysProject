@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --time=02:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=model_inference_1.out
+#SBATCH --output=model_inference_2.out
 
 module purge
 module load 2022
@@ -32,8 +32,8 @@ source activate nbr
 # srun python final_evaluation.py --dataset valuedshopper --model top_personal
 
 # Started splitted in two runs at 11.35
-srun python final_evaluation.py --dataset dunnhumby --model betavae
-srun python final_evaluation.py --dataset instacart --model betavae
+# srun python final_evaluation.py --dataset dunnhumby --model betavae
+# srun python final_evaluation.py --dataset instacart --model betavae
 # srun python final_evaluation.py --dataset tafeng --model betavae
 # srun python final_evaluation.py --dataset valuedshopper --model betavae
 # srun python final_evaluation.py --dataset taobao --model betavae
