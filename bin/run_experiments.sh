@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --time=02:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=model_inference_%A.out
+#SBATCH --output=model_inference%A.out
 
 module purge
 module load 2022
