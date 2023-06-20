@@ -329,3 +329,11 @@ class NBRDatasetBase(ABC):
     def restrict_dataset(self, column_to_restrict, perc_ids_to_keep):
             user_ids = list(set(self.train_df[column_to_restrict].tolist()))
             self.train_df = self.train_df.loc[self.train_df[column_to_restrict].isin(user_ids[0:int((len(user_ids) * perc_ids_to_keep))])]
+
+
+    # def _average_basket_size_per_user(data):
+    #     df = data.groupby(['user']).nunique()
+    #     print(df)
+    
+
+    # def _average_number_baskets_per_user(data)
