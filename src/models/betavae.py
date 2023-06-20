@@ -294,7 +294,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         # Training VAE
         print("Training VAE")
 
-        n_epochs = 1
+        n_epochs = 25
         batch_size = 32
 
         optimizer = optim.Adam(self.parameters(),
@@ -352,7 +352,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         total_users = user_vectors_train.shape[0]
         batch_size = 32
-        n_epochs = 1
+        n_epochs = 50
         lr_predictor = 0.1
         
         predictor_optimizer = optim.Adam(self.predictor.parameters(),
