@@ -13,6 +13,7 @@ Before running the code you need to download the datasets. Datasets can be find 
 **Instacart**: https://www.kaggle.com/c/instacart-market-basket-analysis/data \
 **Dunnhumby**: https://www.dunnhumby.com/source-files/ \
 **Tafeng**: https://www.kaggle.com/chiranjivdas09/ta-feng-grocery-dataset
+ADD NEW ONES!
 
 After downloading the dataset you need to put it in the 'data' directory in the folder with name of the dataset in subfolder 'raw'.
 
@@ -53,13 +54,16 @@ The hierarchy of your repository should look as follows:
 
 ```
 
-#### Running the code
-To reproduce the results with default hyperparameters you need to run the following command:
-```python
-python run_experiment.py
-```
+The following [Dropbox link](https://www.dropbox.com/scl/fo/9ytigi0278u1zufp8e86a/h?dl=0&rlkey=rj5fbm835r43pfltblpxu1nbi) also contains all (preproccesed) data for reproducibility convencience. Unpacking this in the data folder should result in the same directory structure as mentioned above.
 
-If you want to change the hyperparameters just add '--argument value' to the command above. 
+#### Running the code
+To reproduce the results with default hyperparameters, on for example the Tafeng dataset using the default TIFUKNN model you need to run the following command:
+```python
+python final_evaluation.py --model tifuknn --dataset tafeng
+```
+This automatically saves/updates the results in the 'results' directory in the 'data.json' file.
+
+If you want to change the hyperparameters, or perform parameter tuning just add '--argument value' to the command below. 
 
 For example:
 ```python
@@ -77,8 +81,10 @@ List of all avaliable arguments:
 > --within_decay_rate (float, optional): Within decay rate. \
 > --group_decay_rate (float, optional): Group decay rate. \
 > --group_count (int, optional): Group count. \
-> --alpha (float, optional): Alpha.
+> --hypertuning (float, optional): Whether to perform hyperparamter tuning. \
+> --save_user_metrics (float, optional): Whether to save the metrics per user_id for further analysis.
 
-Results will be saved in the 'results' directory as .txt file with the name indicating arguments used 
+
+In this case results will be saved in the 'results' directory as .txt file with the name indicating arguments used 
 `{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}.txt`
 

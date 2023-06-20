@@ -32,9 +32,9 @@ source activate nbr
 # srun python final_evaluation.py --dataset valuedshopper --model top_personal
 
 # Started splitted in two runs at 11.35
-# srun python final_evaluation.py --dataset dunnhumby --model betavae
-# srun python final_evaluation.py --dataset instacart --model betavae
-srun python final_evaluation.py --dataset tafeng --model betavae
-srun python final_evaluation.py --dataset valuedshopper --model betavae
+srun python final_evaluation.py --dataset dunnhumby --model betavae
+srun python final_evaluation.py --dataset instacart --model betavae
+# srun python final_evaluation.py --dataset tafeng --model betavae
+# srun python final_evaluation.py --dataset valuedshopper --model betavae
 # srun python final_evaluation.py --dataset taobao --model betavae
 # srun python final_evaluation.py --dataset tmall --model betavae
