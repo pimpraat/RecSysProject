@@ -119,7 +119,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         self.predictor_loss_fn = None
         self.all_user_vecs = None
 
-        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
 
     def encode(self, input: Tensor) -> List[Tensor]:
@@ -200,7 +200,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         with torch.no_grad():
             for i in range(0, total_users, batch_size):
                 batch = torch.tensor(val_user_vectors[i:i+batch_size].todense(), dtype=torch.float)
-                results = self.forward(batch)
+                results = self.forward(batch.to(self.device))
                 val_loss = self.loss_function(results, self.kld_weight)
                 loss_total += val_loss['loss']
                 recon_loss_total += val_loss['Reconstruction_Loss']
@@ -222,7 +222,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         with torch.no_grad():
             for i in range(0, total_users, batch_size):
-                batch = torch.tensor(user_vectors[i:i+batch_size].todense(), dtype=torch.float)
+                batch = torch.tensor(user_vectors[i:i+batch_size].todense(), dtype=torch.float).to(self.device)
                 mu, log_var = self.encode(batch)
                 z = self.reparameterize(mu, log_var)
                 user_latent_reps.append(z)
@@ -230,10 +230,10 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             user_latent_reps = torch.cat(user_latent_reps)
 
             for i in range(0, total_users, batch_size):
-                predict = self.predictor.forward(user_latent_reps[i:i+batch_size])
+                predict = self.predictor.forward(user_latent_reps[i:i+batch_size].to(self.device))
                 # predict = softmaxer(predict)
 
-                target_basket = torch.tensor(next_basket[i:i+batch_size].todense(), dtype=torch.float)
+                target_basket = torch.tensor(next_basket[i:i+batch_size].todense(), dtype=torch.float).to(self.device)
                 loss = self.predictor_loss_fn(predict, target_basket)
 
                 loss_total += loss.item()
@@ -302,6 +302,8 @@ class BetaVAERecommender(BaseVAE, IRecommender):
                                weight_decay=self.weight_decay)
         scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=1)
 
+        self.to(self.device)
+
         total_users = train_user_vectors.shape[0]
 
         total_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -314,7 +316,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             for i in tqdm(range(0, total_users, batch_size)):
                 optimizer.zero_grad()
                 batch = torch.tensor(train_user_vectors[i:i+batch_size].todense(), dtype=torch.float)
-                results = self.forward(batch)
+                results = self.forward(batch.to(self.device))
                 train_loss = self.loss_function(results, self.kld_weight)
                 train_loss['loss'].backward()
                 optimizer.step()
@@ -329,6 +331,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         print("Training Predictor")
         self.predictor = PredictorVAE(input_size=self.latent_dim, hidden_dims=self.hidden_dims, output_size=train_total_items)
+        self.predictor.to(self.device)
 
         # val_user_ids = list(dataset.val_df.user_id)
         # val_user_basket_df = dataset.val_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
@@ -376,11 +379,11 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             with torch.no_grad():
                 for i in range(0, total_users, batch_size):
                     batch = torch.tensor(user_vectors_train[i:i+batch_size].todense(), dtype=torch.float)
-                    mu, log_var = self.encode(batch)
+                    mu, log_var = self.encode(batch.to(self.device))
                     z = self.reparameterize(mu, log_var)
                     user_latent_reps.append(z)
 
-            user_latent_reps = torch.cat(user_latent_reps)
+            user_latent_reps = torch.cat(user_latent_reps).cpu()
 
             self._nbrs = NearestNeighbors(
                 n_neighbors=self.num_nearest_neighbors + 1, # TODO: Why +1?
@@ -399,10 +402,10 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             
             for i in tqdm(range(0, total_users, batch_size)):
                 predictor_optimizer.zero_grad()
-                predict = self.predictor.forward(user_combined_vec[i:i+batch_size])
+                predict = self.predictor.forward(user_combined_vec[i:i+batch_size].to(self.device))
                 # predict = softmaxer(predict)
 
-                target_basket = torch.tensor(train_user_vectors_true[i:i+batch_size].todense(), dtype=torch.float)
+                target_basket = torch.tensor(train_user_vectors_true[i:i+batch_size].todense(), dtype=torch.float).to(self.device)
                 train_loss = self.predictor_loss_fn(predict, target_basket)
                 train_loss.backward()
                 predictor_optimizer.step()
@@ -431,8 +434,8 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         with torch.no_grad():
             batch = torch.tensor(user_vectors.todense(), dtype=torch.float)
-            mu, log_var = self.encode(batch)
-            user_latent_reps = self.reparameterize(mu, log_var)
+            mu, log_var = self.encode(batch.to(self.device))
+            user_latent_reps = self.reparameterize(mu, log_var).cpu()
 
             user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
             user_nn_vectors = []
@@ -443,10 +446,10 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
             user_combined_vec = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
 
-            predict = self.predictor.forward(user_combined_vec)
+            predict = self.predictor.forward(user_combined_vec.to(self.device))
             # predict = softmaxer(predict)
         
-        return predict.numpy()
+        return predict.cpu().numpy()
 
 
     def _calculate_basket_weight(self, df: pd.DataFrame):
