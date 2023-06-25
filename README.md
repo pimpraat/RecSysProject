@@ -4,7 +4,16 @@
 
 #### Environment
 
-To reproduce the results you need to create an environment. All required packages are listed in the `requirements.txt` file.
+To reproduce the results you need to create an environment.
+To create the Conda environment with all the necessary libraries 
+```shell
+conda env create -f environment.yaml
+```
+
+To activate the created environment:
+```shell
+conda activate RecSysProject
+```
 
 #### Datasets
 
