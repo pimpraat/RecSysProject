@@ -17,14 +17,8 @@ conda activate RecSysProject
 
 #### Datasets
 
-Before running the code you need to download the datasets. Datasets can be find here:
-
-**Instacart**: https://www.kaggle.com/c/instacart-market-basket-analysis/data \
-**Dunnhumby**: https://www.dunnhumby.com/source-files/ \
-**Tafeng**: https://www.kaggle.com/chiranjivdas09/ta-feng-grocery-dataset
-ADD NEW ONES!
-
-After downloading the dataset you need to put it in the 'data' directory in the folder with name of the dataset in subfolder 'raw'.
+Before running the code you need to download the datasets. Datasets can be find here: [Dropbox link](https://www.dropbox.com/scl/fo/9ytigi0278u1zufp8e86a/h?dl=0&rlkey=rj5fbm835r43pfltblpxu1nbi).
+This link contain also (preproccesed) data for reproducibility convencience. Unpacking this in the data folder should result in the same directory structure as mentioned below.
 
 
 The hierarchy of your repository should look as follows:
@@ -36,34 +30,37 @@ The hierarchy of your repository should look as follows:
     ├── data
     |   ├── dunnhumby
     |   |   └── raw
-    |   |       ├── campaign_desc.csv
-    |   |       ├── campaign_table.csv
-    |   |       ├── casual_data.csv
-    |   |       ├── coupon.csv
-    |   |       ├── coupon_redempt.csv
-    |   |       ├── hh_demographic.csv
-    |   |       ├── product.csv
-    |   |       └── transaction_data.csv
+    |   |       ├── Dunnhumby_future.csv
+    |   |       └── Dunnhumby_history.csv
     |   |     
     |   ├── instacart
     |   |   └── raw
-    |   |       ├── aisles.csv
-    |   |       ├── departments.csv
-    |   |       ├── order_products__prior.csv
-    |   |       ├── order_products__train.csv
-    |   |       ├── orders.csv
-    |   |       └── products.csv
+    |   |       ├── Instacart_future.csv
+    |   |       └── Instacart_history.csv
     |   |
-    |   └── tafeng
+    |   ├── tafeng
+    |   |   └── raw
+    |   |       ├── TaFang_future_NB.csv
+    |   |       └── TaFang_history_NB.csv
+    |   |
+    |   ├── taobao
+    |   |   └── raw
+    |   |       └── taobao.csv
+    |   |
+    |   ├── tmall
+    |   |   └── raw
+    |   |       └── ijcai2016_taobao.csv
+    |   |
+    |   └── valuedshopper
     |       └── raw
-    |           └── ta_feng_all_months_merged.csv
+    |           ├── VS_future_order.csv
+    |           └── VS_history_order.csv
     |
+    ├── report_results
     ├── results
     └── src
 
 ```
-
-The following [Dropbox link](https://www.dropbox.com/scl/fo/9ytigi0278u1zufp8e86a/h?dl=0&rlkey=rj5fbm835r43pfltblpxu1nbi) also contains all (preproccesed) data for reproducibility convencience. Unpacking this in the data folder should result in the same directory structure as mentioned above.
 
 #### Running the code
 To reproduce the results with default hyperparameters, on for example the Tafeng dataset using the default TIFUKNN model you need to run the following command:
@@ -85,11 +82,11 @@ List of all avaliable arguments:
 > --cutoff_list (list): List of cutoffs. \
 > --batch_size (int): Batch size. \
 > --dataset_dir_name (str): Name of the dataset directory. \
-> --verbose (bool, optional): Whether to print progress. Defaults to True. \
 > --num_nearest_neighbors (int, optional): Number of nearest neighbors. \
 > --within_decay_rate (float, optional): Within decay rate. \
 > --group_decay_rate (float, optional): Group decay rate. \
 > --group_count (int, optional): Group count. \
+> --alpha (float, optional): Alpha. \
 > --hypertuning (float, optional): Whether to perform hyperparamter tuning. \
 > --save_user_metrics (float, optional): Whether to save the metrics per user_id for further analysis.
 
@@ -97,3 +94,20 @@ List of all avaliable arguments:
 In this case results will be saved in the 'results' directory as .txt file with the name indicating arguments used 
 `{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}.txt`
 
+#### Job files
+In `run_files` directory you can find job files used for running the experiments on CPU/GPU. 
+Commands below will run all experiments used in our study with specified hyperparameters and save the results
+to the `results` directory.
+
+CPU:
+```shell
+bash run_experiments_cpu.sh
+```
+
+GPU (on Lisa):
+```shell
+sbatch run_experiments_gpu.job
+```
+
+#### Fairness results
+To reproduce the fairness results after running the experiments please follow the steps in the `generate_report_results.ipynb` notebook. 
