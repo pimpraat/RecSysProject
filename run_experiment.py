@@ -53,7 +53,13 @@ def run_experiment(
             "alpha": alpha,
         }
     elif model == 'betavae':
-        pass
+        vparams = {
+            "num_nearest_neighbors": num_nearest_neighbors,
+            "within_decay_rate": within_decay_rate,
+            "group_decay_rate": group_decay_rate,
+            "group_count": group_count,
+            "alpha": alpha,
+        }
     elif model == 'top_personal':
         vparams = {
             'min_freq': 1,
