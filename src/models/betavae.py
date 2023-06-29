@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from src.models.core import IRecommender
 from src.dataset import NBRDatasetBase
 from abc import abstractmethod
-from typing import List, Callable, Union, Any, TypeVar, Tuple
+from typing import List, Any, TypeVar
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
