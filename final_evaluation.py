@@ -56,6 +56,15 @@ HPARAMS = {
         }
 }
 
+BETA_VAE_K_PARAM = {
+    'instacart': 50,
+    'tafeng': 10,
+    'dunnhumby': 20,
+    'valuedshopper': 10,
+    'tmall': 250,
+    'taobao': 150
+}
+
 
 def run_eval_model(dataset:str,model:str, batch_size:int, cutoff_list:list, verbose=True):
     """
@@ -83,8 +92,8 @@ def run_eval_model(dataset:str,model:str, batch_size:int, cutoff_list:list, verb
     elif model == 'tifuknn':
         selected_params = HPARAMS[dataset]
     elif model == 'betavae':
-        print('GF')
-        pass
+        beta_vae_nn = BETA_VAE_K_PARAM[dataset]
+        selected_params['num_nearest_neighbors'] = beta_vae_nn
 
     # Create the split if not already present in the data
     dataset_split_path = os.path.join(DATA_DIR, dataset, "split")

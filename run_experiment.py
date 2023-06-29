@@ -22,6 +22,7 @@ def run_experiment(
     group_decay_rate=0.7,
     group_count=7,
     alpha=0.7,
+    vae_enable_knn=True,
     hypertuning=False,
     save_user_metrics=False,
 ):
@@ -59,6 +60,7 @@ def run_experiment(
             "group_decay_rate": group_decay_rate,
             "group_count": group_count,
             "alpha": alpha,
+            "vae_enable_knn": vae_enable_knn,
         }
     elif model == 'top_personal':
         vparams = {
@@ -141,6 +143,7 @@ def create_parser():
     parser.add_argument("--group_decay_rate", type=float, default=0.7)
     parser.add_argument("--group_count", type=int, default=7)
     parser.add_argument("--alpha", type=float, default=0.7)
+    parser.add_argument("--vae_enable_knn", type=bool, default=True)
     parser.add_argument("--hypertuning", type=bool, default=False)
     parser.add_argument("--save_user_metrics", type=bool, default=False)
     return parser
@@ -159,6 +162,7 @@ if __name__ == "__main__":
         group_decay_rate=args.group_decay_rate,
         group_count=args.group_count,
         alpha=args.alpha,
+        vae_enable_knn=args.vae_enable_knn,
         hypertuning=args.hypertuning,
         save_user_metrics=args.save_user_metrics,
     )

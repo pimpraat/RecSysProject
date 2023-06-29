@@ -87,6 +87,7 @@ List of all avaliable arguments:
 > --group_decay_rate (float, optional): Group decay rate. \
 > --group_count (int, optional): Group count. \
 > --alpha (float, optional): Alpha. \
+> --vae_enable_knn (bool, optional) : Whether to use KNN for encoded user vectors in VAE implementation. Default True. \
 > --hypertuning (float, optional): Whether to perform hyperparamter tuning. \
 > --save_user_metrics (float, optional): Whether to save the metrics per user_id for further analysis.
 

@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 import optuna
+import copy
 
 Tensor = TypeVar('torch.tensor')
 
@@ -61,7 +62,7 @@ class PredictorVAE(nn.Module):
                     nn.Linear(input_size, h_dim),
                     nn.BatchNorm1d(h_dim),
                     nn.LeakyReLU(),
-                    nn.Dropout(0.25))
+                    nn.Dropout(0.15))
             )
             input_size = h_dim
 
@@ -86,6 +87,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         group_decay_rate: float = 0.7,
         alpha: float = 0.7,
         group_count: int = 7,
+        vae_enable_knn: bool = True,
         similarity_measure: str = 'euclidean',
     ) -> None:
         super().__init__()
@@ -113,11 +115,13 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
         self.lr = 0.005
         self.weight_decay = 0.0
-        self.kld_weight = 0.015
+        self.kld_weight = 0.001
 
         self.predictor = None
         self.predictor_loss_fn = None
         self.all_user_vecs = None
+
+        self.collaborative = vae_enable_knn
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
@@ -227,10 +231,22 @@ class BetaVAERecommender(BaseVAE, IRecommender):
                 z = self.reparameterize(mu, log_var)
                 user_latent_reps.append(z)
 
-            user_latent_reps = torch.cat(user_latent_reps)
+            user_latent_reps = torch.cat(user_latent_reps).cpu()
 
+            if self.collaborative:
+                user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
+                user_nn_vectors = []
+                for nn_indices in user_nn_indices:
+                    nn_vector = self.all_user_vecs[nn_indices[1:], :].mean(dim=0)
+                    user_nn_vectors.append(nn_vector)
+                user_nn_vectors = torch.stack(user_nn_vectors)
+
+                user_dense_vecs = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
+            else:
+                user_dense_vecs = user_latent_reps
+            
             for i in range(0, total_users, batch_size):
-                predict = self.predictor.forward(user_latent_reps[i:i+batch_size].to(self.device))
+                predict = self.predictor.forward(user_dense_vecs[i:i+batch_size].to(self.device))
                 # predict = softmaxer(predict)
 
                 target_basket = torch.tensor(next_basket[i:i+batch_size].todense(), dtype=torch.float).to(self.device)
@@ -294,7 +310,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         # Training VAE
         print("Training VAE")
 
-        n_epochs = 25
+        n_epochs = 50
         batch_size = 32
 
         optimizer = optim.Adam(self.parameters(),
@@ -366,6 +382,7 @@ class BetaVAERecommender(BaseVAE, IRecommender):
         self.predictor_loss_fn = nn.MSELoss()
         # self.predictor_loss_fn = nn.CrossEntropyLoss()
         
+        lowest_loss = 1000000
         self.eval()
 
         for epoch in range(n_epochs):
@@ -385,24 +402,27 @@ class BetaVAERecommender(BaseVAE, IRecommender):
 
             user_latent_reps = torch.cat(user_latent_reps).cpu()
 
-            self._nbrs = NearestNeighbors(
-                n_neighbors=self.num_nearest_neighbors + 1, # TODO: Why +1?
-                algorithm="brute",
-                metric=self.similarity_measure
-            ).fit(user_latent_reps)
+            if self.collaborative:
+                self._nbrs = NearestNeighbors(
+                    n_neighbors=self.num_nearest_neighbors + 1, # TODO: Why +1?
+                    algorithm="brute",
+                    metric=self.similarity_measure
+                ).fit(user_latent_reps)
 
-            user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
-            user_nn_vectors = []
-            for nn_indices in user_nn_indices:
-                nn_vector = user_latent_reps[nn_indices[1:], :].mean(dim=0)
-                user_nn_vectors.append(nn_vector)
-            user_nn_vectors = torch.stack(user_nn_vectors)
+                user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
+                user_nn_vectors = []
+                for nn_indices in user_nn_indices:
+                    nn_vector = user_latent_reps[nn_indices[1:], :].mean(dim=0)
+                    user_nn_vectors.append(nn_vector)
+                user_nn_vectors = torch.stack(user_nn_vectors)
 
-            user_combined_vec = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
+                user_dense_vecs = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
+            else:
+                user_dense_vecs = user_latent_reps
             
             for i in tqdm(range(0, total_users, batch_size)):
                 predictor_optimizer.zero_grad()
-                predict = self.predictor.forward(user_combined_vec[i:i+batch_size].to(self.device))
+                predict = self.predictor.forward(user_dense_vecs[i:i+batch_size].to(self.device))
                 # predict = softmaxer(predict)
 
                 target_basket = torch.tensor(train_user_vectors_true[i:i+batch_size].todense(), dtype=torch.float).to(self.device)
@@ -413,13 +433,20 @@ class BetaVAERecommender(BaseVAE, IRecommender):
                 train_loss_total += train_loss.item()
                 iters += 1
 
+            self.all_user_vecs = user_latent_reps
+
             val_loss = self.validate_predictor(user_vectors_test, test_user_vectors_true)
             predictor_scheduler.step(val_loss)
             print("Epoch: {}, Val Loss: {}".format(epoch, val_loss))
 
-        print("PREDICTOR TRAINED!")
+            if val_loss < lowest_loss:
+                print("Saving best predictor...")
+                lowest_loss = val_loss
+                best_predictor = copy.deepcopy(self.predictor)
+                
+        self.predictor = best_predictor.to(self.device)
 
-        self.all_user_vecs = user_latent_reps
+        print("PREDICTOR TRAINED!")
 
         return self
     
@@ -437,16 +464,19 @@ class BetaVAERecommender(BaseVAE, IRecommender):
             mu, log_var = self.encode(batch.to(self.device))
             user_latent_reps = self.reparameterize(mu, log_var).cpu()
 
-            user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
-            user_nn_vectors = []
-            for nn_indices in user_nn_indices:
-                nn_vector = self.all_user_vecs[nn_indices[1:], :].mean(dim=0)
-                user_nn_vectors.append(nn_vector)
-            user_nn_vectors = torch.stack(user_nn_vectors)
+            if self.collaborative:
+                user_nn_indices = self._nbrs.kneighbors(user_latent_reps, return_distance=False)
+                user_nn_vectors = []
+                for nn_indices in user_nn_indices:
+                    nn_vector = self.all_user_vecs[nn_indices[1:], :].mean(dim=0)
+                    user_nn_vectors.append(nn_vector)
+                user_nn_vectors = torch.stack(user_nn_vectors)
 
-            user_combined_vec = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
+                user_dense_vecs = self.alpha * user_latent_reps + (1 - self.alpha) * user_nn_vectors
+            else:
+                user_dense_vecs = user_latent_reps
 
-            predict = self.predictor.forward(user_combined_vec.to(self.device))
+            predict = self.predictor.forward(user_dense_vecs.to(self.device))
             # predict = softmaxer(predict)
         
         return predict.cpu().numpy()
