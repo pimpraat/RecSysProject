@@ -19,7 +19,7 @@ class Evaluator:
         cutoff_list: List[int],
         metric_names: List[str] = None,
         batch_size: int = 1000,
-        save_user_metrics: bool = True, #was set to false
+        save_user_metrics: bool = False,
         verbose=False,
     ):
 
@@ -66,13 +66,13 @@ class Evaluator:
             metrics_dict[metric.get_metric_name()] = metric.get_metric_value()
         return metrics_dict
 
-    def _compute_metrics_on_recommendation_list(self, true_baskets_batch: pd.Series, scores_batch, n_baskets_for_user):
+    def _compute_metrics_on_recommendation_list(self, true_baskets_batch: pd.Series, scores_batch):
         assert len(true_baskets_batch) == scores_batch.shape[0]
 
-        for true_basket_i, scores_i, nbaskets_i in zip(true_baskets_batch, scores_batch, n_baskets_for_user):
+        for true_basket_i, scores_i in zip(true_baskets_batch, scores_batch):
 
             true_basket = np.array(true_basket_i)
-            
+
             if isinstance(scores_i, scipy.sparse._csr.csr_matrix):
                 model_scores = scores_i.toarray().squeeze()
             else:
@@ -84,16 +84,12 @@ class Evaluator:
                     metric.add_recommendations(true_basket, model_scores)
                     cumulative_metric_new = metric.cumulative_value
                     self.user_metrics[metric.get_metric_name()].append(
-                        [nbaskets_i, cumulative_metric_new - cumulative_metric_old]
+                        cumulative_metric_new - cumulative_metric_old
                     )
                 else:
                     metric.add_recommendations(true_basket, model_scores)
 
             self._n_users_evaluated += 1
-        # print(self.user_metrics)
-        # Save to json data file
-        #TODO: Add model/dataset name etc to this!
-        with open("results/user_level_test.json", "w+") as fp: json.dump(self.user_metrics, fp, indent=4)
 
 
         if (
@@ -145,11 +141,9 @@ class Evaluator:
             # slice = self.dataset_df.iloc[users_batch_start:users_batch_end]
             # true_baskets_batch = slice.basket
             true_baskets_batch = self.dataset_df.iloc[users_batch_start:users_batch_end].basket
-            n_baskets_for_user = self.dataset_df.iloc[users_batch_start:users_batch_end].n_baskets_for_user
             self._compute_metrics_on_recommendation_list(
                 true_baskets_batch=true_baskets_batch,
                 scores_batch=scores_batch,
-                n_baskets_for_user=n_baskets_for_user
             )
 
             users_batch_start = users_batch_end
