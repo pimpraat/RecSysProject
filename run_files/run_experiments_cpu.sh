@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 # instacart tifukkn
 python run_experiment.py --dataset instacart --model tifuknn --batch-size 1000 --num_nearest_neighbors 900 --within_decay_rate 0.9 --group_decay_rate 0.7 --group_count 3 --alpha 0.9 --save_user_metrics True
 # tafeng tifukkn

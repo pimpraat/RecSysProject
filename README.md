@@ -7,7 +7,7 @@
 To reproduce the results you need to create an environment.
 To create the Conda environment with all the necessary libraries 
 ```shell
-conda env create -f environment.yaml
+conda env create -f environment.yml
 ```
 
 To activate the created environment:
@@ -25,7 +25,7 @@ The hierarchy of your repository should look as follows:
 ```
 └── RecSys
     |
-    ├── bin
+    ├── run_files
     |
     ├── data
     |   ├── dunnhumby
@@ -101,12 +101,12 @@ to the `results` directory.
 
 CPU:
 ```shell
-bash run_experiments_cpu.sh
+bash run_files/run_experiments_cpu.sh
 ```
 
 GPU (on Lisa):
 ```shell
-sbatch run_experiments_gpu.job
+sbatch run_files/run_experiments_gpu.job
 ```
 
 #### Fairness results
