@@ -64,6 +64,21 @@ The hierarchy of your repository should look as follows:
 ```
 
 #### Running the code
+In `run_files` directory you can find job files used for running the experiments on CPU/GPU. 
+Commands below will run all experiments used in our study with specified hyperparameters and save the results
+to the `results` directory.
+
+CPU:
+```shell
+bash run_files/run_experiments_cpu.sh
+```
+
+GPU (on Lisa):
+```shell
+sbatch run_files/run_experiments_gpu.job
+```
+
+Alternatively you can run the experiments as specified below:
 To reproduce the results with default hyperparameters, on for example the Tafeng dataset using the default TIFUKNN model you need to run the following command:
 ```python
 python final_evaluation.py --model tifuknn --dataset tafeng
@@ -95,21 +110,6 @@ List of all avaliable arguments:
 
 In this case results will be saved in the 'results' directory as .txt file with the name indicating arguments used 
 `{dataset}_{num_nearest_neighbors}_{within_decay_rate}_{group_decay_rate}_{group_count}_{alpha}.txt`
-
-#### Job files
-In `run_files` directory you can find job files used for running the experiments on CPU/GPU. 
-Commands below will run all experiments used in our study with specified hyperparameters and save the results
-to the `results` directory.
-
-CPU:
-```shell
-bash run_files/run_experiments_cpu.sh
-```
-
-GPU (on Lisa):
-```shell
-sbatch run_files/run_experiments_gpu.job
-```
 
 #### Fairness results
 To reproduce the fairness results after running the experiments please follow the steps in the `generate_report_results.ipynb` notebook. 
