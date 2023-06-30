@@ -1,4 +1,4 @@
-## TIFUKNN
+## [RE] Modeling Personalized Item Frequency Information for Next-basket Recommendation
 
 ### Reproducing the results
 
