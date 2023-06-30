@@ -77,8 +77,11 @@ GPU (on Lisa):
 ```shell
 sbatch run_files/run_experiments_gpu.job
 ```
+**All the results will be saved to `results` directory.**
+
 
 Alternatively you can run the experiments as specified below:
+
 To reproduce the results with default hyperparameters, on for example the Tafeng dataset using the default TIFUKNN model you need to run the following command:
 ```python
 python final_evaluation.py --model tifuknn --dataset tafeng
